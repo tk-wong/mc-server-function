@@ -14,9 +14,34 @@ def start_vm_web(request):
     INSTANCE = os.environ.get("INSTANCE")
     MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132")  # default to 19132 if not set
     # --------------------
+    html_template = """
+    <html>
+        <head>
+            <meta charset="utf-8">
+            <title>Minecraft Server Status</title>
+            {refresh_tag}
+            <style>
+                body {{ font-family: sans-serif; text-align: center; padding-top: 50px; background: #2c3e50; color: white; }}
+                .status {{ font-size: 24px; font-weight: bold; padding: 20px; }}
+                .ip {{ color: #2ecc71; font-size: 32px; border: 2px solid #2ecc71; display: inline-block; padding: 10px 20px; margin-top: 20px; }}
+                .loader {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }}
+                @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+            </style>
+        </head>
+        <body>
+            <h1>Minecraft Server Status</h1>
+            <div class="status">{message}</div>
+            {content}
+        </body>
+    </html>
+    """
     if not all([PROJECT_ID, ZONE, INSTANCE]):
         logging.warning("Missing environment variables.")
-        return "Error: Missing environment variables. Please set PROJECT_ID, ZONE, and INSTANCE.", 400
+        return html_template.format(
+            refresh_tag='',
+            message="❌ Missing environment variables.",
+            content='<p>Please check the server configuration.</p>'
+        ) , 500
     try:
         logging.info(
             f"Checking status of instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
@@ -25,28 +50,6 @@ def start_vm_web(request):
             project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
         status = instance_info.status
 
-        # 建立基礎 HTML 模板
-        html_template = """
-        <html>
-            <head>
-                <meta charset="utf-8">
-                <title>Minecraft Server Status</title>
-                {refresh_tag}
-                <style>
-                    body {{ font-family: sans-serif; text-align: center; padding-top: 50px; background: #2c3e50; color: white; }}
-                    .status {{ font-size: 24px; font-weight: bold; padding: 20px; }}
-                    .ip {{ color: #2ecc71; font-size: 32px; border: 2px solid #2ecc71; display: inline-block; padding: 10px 20px; margin-top: 20px; }}
-                    .loader {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }}
-                    @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-                </style>
-            </head>
-            <body>
-                <h1>Minecraft Server Status</h1>
-                <div class="status">{message}</div>
-                {content}
-            </body>
-        </html>
-        """
 
         if status == "TERMINATED":
             # 如果是關機狀態，發送啟動請求
@@ -80,4 +83,8 @@ def start_vm_web(request):
             )
     except Exception as e:
         logging.error(f"Error occurred: {e}")
-        return f"Internal error occurred", 500
+        return html_template.format(
+            refresh_tag='',
+            message="❌ An error occurred while checking the server status.",
+            content=f'<p>An error occurred. Please try again later.</p>'
+        ) , 500
