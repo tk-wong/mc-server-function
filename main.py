@@ -12,56 +12,58 @@ def start_vm_web(request):
     # --------------------
     if not all([PROJECT_ID, ZONE, INSTANCE]):
         return "Error: Missing environment variables. Please set PROJECT_ID, ZONE, and INSTANCE.", 400
+    try:
+        client = compute_v1.InstancesClient()
+        instance_info = client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
+        status = instance_info.status
+        
+        # 建立基礎 HTML 模板
+        html_template = """
+        <html>
+            <head>
+                <meta charset="utf-8">
+                <title>Minecraft Server Status</title>
+                {refresh_tag}
+                <style>
+                    body {{ font-family: sans-serif; text-align: center; padding-top: 50px; background: #2c3e50; color: white; }}
+                    .status {{ font-size: 24px; font-weight: bold; padding: 20px; }}
+                    .ip {{ color: #2ecc71; font-size: 32px; border: 2px solid #2ecc71; display: inline-block; padding: 10px 20px; margin-top: 20px; }}
+                    .loader {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }}
+                    @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
+                </style>
+            </head>
+            <body>
+                <h1>Minecraft Server Status</h1>
+                <div class="status">{message}</div>
+                {content}
+            </body>
+        </html>
+        """
 
-    client = compute_v1.InstancesClient()
-    instance_info = client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
-    status = instance_info.status
-    
-    # 建立基礎 HTML 模板
-    html_template = """
-    <html>
-        <head>
-            <meta charset="utf-8">
-            <title>Minecraft Server Status</title>
-            {refresh_tag}
-            <style>
-                body {{ font-family: sans-serif; text-align: center; padding-top: 50px; background: #2c3e50; color: white; }}
-                .status {{ font-size: 24px; font-weight: bold; padding: 20px; }}
-                .ip {{ color: #2ecc71; font-size: 32px; border: 2px solid #2ecc71; display: inline-block; padding: 10px 20px; margin-top: 20px; }}
-                .loader {{ border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 30px; height: 30px; animation: spin 2s linear infinite; margin: 20px auto; }}
-                @keyframes spin {{ 0% {{ transform: rotate(0deg); }} 100% {{ transform: rotate(360deg); }} }}
-            </style>
-        </head>
-        <body>
-            <h1>Minecraft Server Status</h1>
-            <div class="status">{message}</div>
-            {content}
-        </body>
-    </html>
-    """
+        if status == "TERMINATED":
+            # 如果是關機狀態，發送啟動請求
+            client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
+            return html_template.format(
+                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
+                message="starting server...",
+                content='<div class="loader"></div><p>已發送指令，網頁將每 5 秒自動刷新...</p>'
+            )
 
-    if status == "TERMINATED":
-        # 如果是關機狀態，發送啟動請求
-        client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
-        return html_template.format(
-            refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
-            message="starting server...",
-            content='<div class="loader"></div><p>已發送指令，網頁將每 5 秒自動刷新...</p>'
-        )
+        elif status == "RUNNING":
+            # 如果已開機，獲取外部 IP
+            ip = instance_info.network_interfaces[0].access_configs[0].nat_ip
+            return html_template.format(
+                refresh_tag='', # 停止刷新
+                message="✅ Server is running!",
+                content=f'<div class="ip">{ip}:19132</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
+            )
 
-    elif status == "RUNNING":
-        # 如果已開機，獲取外部 IP
-        ip = instance_info.network_interfaces[0].access_configs[0].nat_ip
-        return html_template.format(
-            refresh_tag='', # 停止刷新
-            message="✅ Server is running!",
-            content=f'<div class="ip">{ip}:19132</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
-        )
-
-    else:
-        # 處理其他過渡狀態（如 PROVISIONING, STAGING）
-        return html_template.format(
-            refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
-            message=f"Current status: {status}",
-            content='<div class="loader"></div><p>Processing...Please wait.</p>'
-        )
+        else:
+            # 處理其他過渡狀態（如 PROVISIONING, STAGING）
+            return html_template.format(
+                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
+                message=f"Current status: {status}",
+                content='<div class="loader"></div><p>Processing...Please wait.</p>'
+            )
+    except Exception as e:
+        return f"Error: {str(e)}", 500
