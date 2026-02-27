@@ -2,17 +2,22 @@ import os
 
 import functions_framework
 from google.cloud import compute_v1
+import logging
+
 
 @functions_framework.http
 def start_vm_web(request):
-    # --- 請修改您的資訊 ---
+    logging.basicConfig(level=logging.INFO)
+    logging.info("Received request to check VM status and start if necessary.")
     PROJECT_ID = os.environ.get("PROJECT_ID")
     ZONE = os.environ.get("ZONE")
     INSTANCE = os.environ.get("INSTANCE")
     # --------------------
     if not all([PROJECT_ID, ZONE, INSTANCE]):
+        logging.warning("Missing environment variables.")
         return "Error: Missing environment variables. Please set PROJECT_ID, ZONE, and INSTANCE.", 400
     try:
+        logging.info(f"Checking status of instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
         client = compute_v1.InstancesClient()
         instance_info = client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
         status = instance_info.status
@@ -43,6 +48,7 @@ def start_vm_web(request):
         if status == "TERMINATED":
             # 如果是關機狀態，發送啟動請求
             client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
+            logging.info(f"Sent start request for instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
             return html_template.format(
                 refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
                 message="starting server...",
@@ -50,7 +56,7 @@ def start_vm_web(request):
             )
 
         elif status == "RUNNING":
-            # 如果已開機，獲取外部 IP
+            logging.info(f"Instance '{INSTANCE}' is running.")
             ip = instance_info.network_interfaces[0].access_configs[0].nat_ip
             return html_template.format(
                 refresh_tag='', # 停止刷新
@@ -60,10 +66,12 @@ def start_vm_web(request):
 
         else:
             # 處理其他過渡狀態（如 PROVISIONING, STAGING）
+            logging.info(f"Instance '{INSTANCE}' is in status: {status}")
             return html_template.format(
                 refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
                 message=f"Current status: {status}",
                 content='<div class="loader"></div><p>Processing...Please wait.</p>'
             )
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        logging.error(f"Error occurred: {e}")
+        return f"Internal error occurred", 500
