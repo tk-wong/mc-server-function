@@ -12,6 +12,7 @@ def start_vm_web(request):
     PROJECT_ID = os.environ.get("PROJECT_ID")
     ZONE = os.environ.get("ZONE")
     INSTANCE = os.environ.get("INSTANCE")
+    MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132")  # default to 19132 if not set
     # --------------------
     if not all([PROJECT_ID, ZONE, INSTANCE]):
         logging.warning("Missing environment variables.")
@@ -56,7 +57,7 @@ def start_vm_web(request):
                 # 每 5 秒刷新一次
                 refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>',
                 message="starting server...",
-                content='<div class="loader"></div><p>已發送指令，網頁將每 5 秒自動刷新...</p>'
+                content='<div class="loader"></div><p>server is starting. The page will refresh every 5 seconds until the server is ready...</p>'
             )
 
         elif status == "RUNNING":
@@ -65,7 +66,7 @@ def start_vm_web(request):
             return html_template.format(
                 refresh_tag='',
                 message="✅ Server is running!",
-                content=f'<div class="ip">{ip}:19132</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
+                content=f'<div class="ip">ip: {ip}<br>Port: {MC_SERVER_PORT}</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
             )
 
         else:
