@@ -7,13 +7,18 @@ import logging
 
 @functions_framework.http
 def start_vm_web(request):
-    logging.basicConfig(level=logging.INFO)
+    """
+    HTTP Cloud Function that checks the status of a specified Google Compute Engine VM instance. If the instance is not running, it starts the instance. The function returns an HTML page indicating the current status of the server and provides instructions for connecting to the Minecraft server if it is running.
+    """
+    logging_format = "[%(asctime)s] %(levelname)s: %(message)s"
+    logging.basicConfig(level=logging.INFO, format=logging_format)
     logging.info("Received request to check VM status and start if necessary.")
+    # required for starting the instance and checking its status
     PROJECT_ID = os.environ.get("PROJECT_ID")
     ZONE = os.environ.get("ZONE")
     INSTANCE = os.environ.get("INSTANCE")
-    MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132")  # default to 19132 if not set
-    # --------------------
+    # optional environment variable for Minecraft server port, default to 19132 if not set
+    MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132") 
     html_template = """
     <html>
         <head>
@@ -35,8 +40,9 @@ def start_vm_web(request):
         </body>
     </html>
     """
-    if not all([PROJECT_ID, ZONE, INSTANCE]):
+    if not all([PROJECT_ID, ZONE, INSTANCE]): # Check if all required environment variables are set
         logging.warning("Missing environment variables.")
+        # return an error message in HTML format if any required environment variable is missing
         return html_template.format(
             refresh_tag='',
             message="❌ Missing environment variables.",
@@ -52,18 +58,18 @@ def start_vm_web(request):
 
 
         if status == "TERMINATED":
-            # 如果是關機狀態，發送啟動請求
+            # instance is stopped, start it
             client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
             logging.info(
                 f"Sent start request for instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
             return html_template.format(
-                # 每 5 秒刷新一次
                 refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>',
                 message="starting server...",
                 content='<div class="loader"></div><p>server is starting. The page will refresh every 5 seconds until the server is ready...</p>'
             )
 
         elif status == "RUNNING":
+            # instance is already running, return the IP address and port
             logging.info(f"Instance '{INSTANCE}' is running.")
             ip = instance_info.network_interfaces[0].access_configs[0].nat_i_p
             return html_template.format(
@@ -73,15 +79,15 @@ def start_vm_web(request):
             )
 
         else:
-            # 處理其他過渡狀態（如 PROVISIONING, STAGING）
+            # instance is in some other state (e.g. PROVISIONING, STAGING), show the current status and a loading indicator
             logging.info(f"Instance '{INSTANCE}' is in status: {status}")
             return html_template.format(
-                # 每 5 秒刷新一次
                 refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>',
                 message=f"Current status: {status}",
                 content='<div class="loader"></div><p>Processing...Please wait.</p>'
             )
     except Exception as e:
+        # Log the error and return a generic error message in HTML format
         logging.error(f"Error occurred: {e}")
         return html_template.format(
             refresh_tag='',

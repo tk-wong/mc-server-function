@@ -10,4 +10,7 @@ wheels/
 .venv
 
 # env files
-.env
+.env*
+
+# template for env files (for documentation purposes, should not be ignored)
+!.env-template
