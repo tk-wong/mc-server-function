@@ -17,11 +17,13 @@ def start_vm_web(request):
         logging.warning("Missing environment variables.")
         return "Error: Missing environment variables. Please set PROJECT_ID, ZONE, and INSTANCE.", 400
     try:
-        logging.info(f"Checking status of instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
+        logging.info(
+            f"Checking status of instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
         client = compute_v1.InstancesClient()
-        instance_info = client.get(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
+        instance_info = client.get(
+            project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
         status = instance_info.status
-        
+
         # 建立基礎 HTML 模板
         html_template = """
         <html>
@@ -48,18 +50,20 @@ def start_vm_web(request):
         if status == "TERMINATED":
             # 如果是關機狀態，發送啟動請求
             client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
-            logging.info(f"Sent start request for instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
+            logging.info(
+                f"Sent start request for instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
             return html_template.format(
-                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
+                # 每 5 秒刷新一次
+                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>',
                 message="starting server...",
                 content='<div class="loader"></div><p>已發送指令，網頁將每 5 秒自動刷新...</p>'
             )
 
         elif status == "RUNNING":
             logging.info(f"Instance '{INSTANCE}' is running.")
-            ip = instance_info.network_interfaces[0].access_configs[0].nat_ip
+            ip = instance_info.network_interfaces[0].access_configs[0].nat_i_p
             return html_template.format(
-                refresh_tag='', # 停止刷新
+                refresh_tag='',
                 message="✅ Server is running!",
                 content=f'<div class="ip">{ip}:19132</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
             )
@@ -68,7 +72,8 @@ def start_vm_web(request):
             # 處理其他過渡狀態（如 PROVISIONING, STAGING）
             logging.info(f"Instance '{INSTANCE}' is in status: {status}")
             return html_template.format(
-                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>', # 每 5 秒刷新一次
+                # 每 5 秒刷新一次
+                refresh_tag='<script>setTimeout(() => { location.reload(); }, 5000);</script>',
                 message=f"Current status: {status}",
                 content='<div class="loader"></div><p>Processing...Please wait.</p>'
             )
