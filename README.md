@@ -8,7 +8,7 @@ This is a serverless function that starts a Minecraft server on demand. It uses 
 
 You can use `.env-template` as a template for setting up your environment variables. Make sure to replace the placeholder values with your actual project ID, zone, instance name, and optionally the Minecraft server port.
 ## Usage
-1. Deploy the function to Google Cloud Functions with the required environment variables.
+1. Deploy the function to Google Cloud Functions (google cloud run) with the required environment variables.
 2. When you access the function's URL, it will check the status of the Minecraft server instance:
    - If the instance is stopped, it will start the instance and show a loading indicator until it's running.
    - If the instance is already running, it will display the server's IP address and port number.

@@ -75,7 +75,7 @@ def start_vm_web(request):
             return html_template.format(
                 refresh_tag='',
                 message="✅ Server is running!",
-                content=f'<div class="ip">Ip: {ip}<br>Port: {MC_SERVER_PORT}</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
+                content=f'<div class="ip">IP: {ip}<br>Port: {MC_SERVER_PORT}</div><p>You can start Minecraft Bedrock and connect to the server using the IP address above. Please note that it may take a few minutes for the server to be fully ready.</p>'
             )
 
         else:
