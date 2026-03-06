@@ -1,3 +1,4 @@
+import datetime
 import os
 
 import functions_framework
@@ -18,7 +19,9 @@ def start_vm_web(request):
     ZONE = os.environ.get("ZONE")
     INSTANCE = os.environ.get("INSTANCE")
     # optional environment variable for Minecraft server port, default to 19132 if not set
-    MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132") 
+    MC_SERVER_PORT = os.environ.get("MC_SERVER_PORT", "19132")
+
+    operation_client = compute_v1.ZoneOperationsClient()
     html_template = """
     <html>
         <head>
@@ -40,14 +43,14 @@ def start_vm_web(request):
         </body>
     </html>
     """
-    if not all([PROJECT_ID, ZONE, INSTANCE]): # Check if all required environment variables are set
+    if not all([PROJECT_ID, ZONE, INSTANCE]):  # Check if all required environment variables are set
         logging.warning("Missing environment variables.")
         # return an error message in HTML format if any required environment variable is missing
         return html_template.format(
             refresh_tag='',
             message="❌ Missing environment variables.",
             content='<p>Please check the server configuration.</p>'
-        ) , 500
+        ), 500
     try:
         logging.info(
             f"Checking status of instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
@@ -56,9 +59,23 @@ def start_vm_web(request):
             project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
         status = instance_info.status
 
-
         if status == "TERMINATED":
             # instance is stopped, start it
+            operations = operation_client.list(
+                project=PROJECT_ID, zone=ZONE, filter=f"targetLink:instances/{INSTANCE}", max_results=3)
+            for operation in operations:
+                operation_time = datetime.fromisoformat(
+                    # Remove 'Z' and convert to datetime
+                    operation.insert_time[:-1])
+                if operation_time > datetime.now() - datetime.timedelta(minutes=5):
+                    error = operation.error.errors[0] if operation.error and operation.error.errors else None
+                    if error:
+                        logging.error(f"Recent operation error: {error.message}")
+                        return html_template.format(
+                            refresh_tag='',
+                            message="❌ An error occurred while starting the server.",
+                            content=f'<p>Error details: {error.message}</p>'
+                        ), 500
             client.start(project=PROJECT_ID, zone=ZONE, instance=INSTANCE)
             logging.info(
                 f"Sent start request for instance '{INSTANCE}' in project '{PROJECT_ID}' and zone '{ZONE}'.")
@@ -93,4 +110,4 @@ def start_vm_web(request):
             refresh_tag='',
             message="❌ An error occurred while checking the server status.",
             content=f'<p>An error occurred. Please try again later.</p>'
-        ) , 500
+        ), 500
