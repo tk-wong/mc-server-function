@@ -61,8 +61,10 @@ def start_vm_web(request):
 
         if status == "TERMINATED":
             # instance is stopped, start it
-            operations = operation_client.list(
+            operation_request = compute_v1.ListZoneOperationsRequest(
                 project=PROJECT_ID, zone=ZONE, filter=f"targetLink:instances/{INSTANCE}", max_results=3)
+            operations = operation_client.list(
+                operation_request)
             for operation in operations:
                 operation_time = datetime.fromisoformat(
                     # Remove 'Z' and convert to datetime
@@ -70,7 +72,8 @@ def start_vm_web(request):
                 if operation_time > datetime.now() - datetime.timedelta(minutes=5):
                     error = operation.error.errors[0] if operation.error and operation.error.errors else None
                     if error:
-                        logging.error(f"Recent operation error: {error.message}")
+                        logging.error(
+                            f"Recent operation error: {error.message}")
                         return html_template.format(
                             refresh_tag='',
                             message="❌ An error occurred while starting the server.",
