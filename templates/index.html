@@ -62,6 +62,21 @@
     <div class="message">{{ message }}</div>
     {% if status == "running" %}
     <div class="ip">IP: {{ ip }}<br />Port: {{ port }}</div>
+    <div class="ip-hidden" style="display:none;">IP: ***.***.***.***<br />Port: *****</div>
+    <button onclick="toggleIP()">Hide IP</button>
+    <script>
+        function toggleIP() {
+            const ipElement = document.querySelector('.ip');
+            const ipHiddenElement = document.querySelector('.ip-hidden');
+            if (ipElement.style.display === 'none') {
+                ipElement.style.display = 'inline-block';
+                ipHiddenElement.style.display = 'none';
+            } else {
+                ipElement.style.display = 'none';
+                ipHiddenElement.style.display = 'inline-block';
+            }
+        }
+    </script>
     <p>
       You can start Minecraft Bedrock and connect to the server using the IP
       address above. Please note that it may take a few minutes for the server
