@@ -25,7 +25,7 @@
         font-weight: bold;
         padding: 20px;
       }
-      .ip .ip-hidden{
+      .ip, .ip-hidden{
         color: #2ecc71;
         font-size: 32px;
         border: 2px solid #2ecc71;
@@ -76,19 +76,22 @@
     <h1>Minecraft Server Status</h1>
     <div class="message">{{ message }}</div>
     {% if status == "running" %}
-    <div class="ip">IP: {{ ip }}<br />Port: {{ port }}</div>
-    <div class="ip-hidden" style="display:none;">IP: ***.***.***.***<br />Port: *****</div>
-    <button onclick="toggleIP()" class="hide-ip-button">Hide IP</button>
+    <div class="ip" style="display:none;">IP: {{ ip }}<br />Port: {{ port }}</div>
+    <div class="ip-hidden" ">IP: ⁎⁎⁎.⁎⁎⁎.⁎⁎⁎.⁎⁎⁎<br />Port: ⁎⁎⁎⁎⁎</div>
+    <button onclick="toggleIP()" class="hide-ip-button">Show IP</button>
     <script>
         function toggleIP() {
             const ipElement = document.querySelector('.ip');
             const ipHiddenElement = document.querySelector('.ip-hidden');
+            const button = document.querySelector('.hide-ip-button');
             if (ipElement.style.display === 'none') {
                 ipElement.style.display = 'inline-block';
                 ipHiddenElement.style.display = 'none';
+                button.textContent = 'Hide IP';
             } else {
                 ipElement.style.display = 'none';
                 ipHiddenElement.style.display = 'inline-block';
+                button.textContent = 'Show IP';
             }
         }
     </script>
